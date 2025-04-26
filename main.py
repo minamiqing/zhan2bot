@@ -32,8 +32,9 @@ def index():
 # Webhook 接收路由
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    data = request.get_json()
-    print("收到数据：", data)
+    data = request.get_data(as_text=True)
+    print("收到原始数据：", data)
+    return "OK"                      
 
     if "message" in data:
         chat_id = data["message"]["chat"]["id"]
