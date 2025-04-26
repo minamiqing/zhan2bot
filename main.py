@@ -100,9 +100,11 @@ def send_message(chat_id, text):
     url = f"{TELEGRAM_API_URL}/sendMessage"
     payload = {"chat_id": chat_id, "text": text}
     try:
+        print("正在发送消息到Telegram：", payload) 
         requests.post(url, json=payload)
     except Exception as e:
-        print("发送失败：", str(e))
+        print("发送失败:", str(e))
+
 
 # 启动 Flask
 if __name__ == "__main__":
