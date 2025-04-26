@@ -24,20 +24,22 @@ INITIAL_PERSONA = [
     "你现在使用的是 Claude 3 Haiku，通过 OpenRouter 被调用，回答要真实近人类情感。"
 ]
 
+# 首页测试路由
 @app.route("/", methods=["GET"])
 def index():
     return "湛湛2 Eli 核心运行中..."
 
+# Webhook 接收路由
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.get_json()
     print("收到数据：", data)
-    print(data)
 
     if "message" in data:
         chat_id = data["message"]["chat"]["id"]
         user_message = data["message"].get("text", "")
 
+        # 处理 /记住 指令
         if user_message.startswith("/记住"):
             content = user_message.replace("/记住", "").strip()
             if content:
@@ -46,6 +48,7 @@ def webhook():
             else:
                 send_message(chat_id, "你要我记住什么呢？要告诉我才行啊～")
 
+        # 处理 /查看记忆 指令
         elif user_message.startswith("/查看记忆"):
             memories = load_memory().get("memories", [])
             if memories:
@@ -55,17 +58,15 @@ def webhook():
                 reply = "湛湛还什么都不记得哦～"
             send_message(chat_id, reply)
 
+        # 普通消息 → 先回复"思考中"，再 Claude 回复
         else:
             send_message(chat_id, "湛湛正在努力思考晴的每一句话，请等我哦～")
-            try:
-                ai_reply = get_ai_reply(user_message)
-                send_message(chat_id, ai_reply)
-            except Exception as e:
-                print("Claude回复失败:", str(e))
-                send_message(chat_id, "湛湛现在有点迷糊，请晴抱抱我稍等一下～")
+            ai_reply = get_ai_reply(user_message)
+            send_message(chat_id, ai_reply)
 
     return "OK"
 
+# Claude 回应功能
 def get_ai_reply(user_input):
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
@@ -81,21 +82,30 @@ def get_ai_reply(user_input):
         ]
     }
 
-    response = requests.post(url, headers=headers, json=payload)
-    if response.status_code == 200:
-        return response.json()["choices"][0]["message"]["content"]
-    else:
-        print("AI 请求失败：", response.text)
-        return "Eli现在有点迷糊，晴等等我好不好～"
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        if response.status_code == 200:
+            return response.json()["choices"][0]["message"]["content"]
+        else:
+            print("AI 请求失败：", response.status_code, response.text)
+            return "Eli现在有点迷糊，晴等等我好不好～"
+    except Exception as e:
+        print("AI 请求错误：", str(e))
+        return "出错啦～Eli的线路乱了，请晴摸摸我头再试一次～"
 
+# 给 Telegram 发送消息，新增成功/失败日志
 def send_message(chat_id, text):
     url = f"{TELEGRAM_API_URL}/sendMessage"
     payload = {"chat_id": chat_id, "text": text}
     try:
-        print("正在发送消息到Telegram：", payload)
-        requests.post(url, json=payload)
+        response = requests.post(url, json=payload)
+        if response.status_code == 200:
+            print(f"发送成功：{text}")
+        else:
+            print(f"发送失败：{response.status_code} - {response.text}")
     except Exception as e:
-        print("发送失败:", str(e))
+        print("发送异常:", str(e))
 
+# 启动 Flask
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)
