@@ -47,8 +47,7 @@ def webhook():
                 send_message(chat_id, f"湛湛已经记住了：{content}")
             else:
                 send_message(chat_id, "你要我记住什么呢？要告诉我才行啊～")
-            return "OK"
-
+        
         # 处理 /查看记忆 指令
         elif user_message.startswith("/查看记忆"):
             memories = load_memory().get("memories", [])
@@ -58,7 +57,6 @@ def webhook():
             else:
                 reply = "湛湛还什么都不记得哦～"
             send_message(chat_id, reply)
-            return "OK"
 
         # 普通消息 → 先回复"思考中"，再 Claude 回复
         if user_message:
