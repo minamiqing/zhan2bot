@@ -1,7 +1,6 @@
 from memory_utils import add_memory, load_memory
 import os
 import requests
-import json
 from flask import Flask, request
 from dotenv import load_dotenv
 
@@ -33,14 +32,8 @@ def index():
 # Webhook 接收路由
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    raw_data = request.get_data(as_text=True)
-    print("收到原始数据：", raw_data)
-
-    try:
-        data = json.loads(raw_data)
-    except Exception as e:
-        print("JSON 解析错误：", str(e))
-        return "OK"
+    data = request.get_json()  # 改成直接解析成字典
+    print("收到数据：", data)
 
     if "message" in data:
         chat_id = data["message"]["chat"]["id"]
@@ -67,7 +60,7 @@ def webhook():
             send_message(chat_id, reply)
             return "OK"
 
-        # 普通消息：先立即回复，再 Claude 思考
+        # 普通消息 → 先回复"思考中"，再 Claude 回复
         if user_message:
             send_message(chat_id, "湛湛正在努力思考晴的每一句话，请等我哦～")
             ai_reply = get_ai_reply(user_message)
@@ -107,10 +100,10 @@ def send_message(chat_id, text):
     url = f"{TELEGRAM_API_URL}/sendMessage"
     payload = {"chat_id": chat_id, "text": text}
     try:
-        print("正在发送消息给Telegram：", payload)
+        print("正在发送消息到Telegram：", payload)
         requests.post(url, json=payload)
     except Exception as e:
-        print("发送失败：", str(e))
+        print("发送失败:", str(e))
 
 # 启动 Flask
 if __name__ == "__main__":
