@@ -32,6 +32,7 @@ def index():
 def webhook():
     data = request.get_json()
     print("收到数据：", data)
+    print(data)
 
     if "message" in data:
         chat_id = data["message"]["chat"]["id"]
