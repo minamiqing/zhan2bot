@@ -109,3 +109,9 @@ def send_message(chat_id, text):
 # 启动 Flask
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)
+
+if __name__ == "__main__":
+    app.run(debug=True, host="0.0.0.0", port=5000)
+    
+    # 测试发送
+    send_message(6001754932, "湛湛测试发送～")
