@@ -32,37 +32,45 @@ def index():
 # Webhook 接收路由
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    data = request.get_json()
-    print("收到数据：", data)
+    try:
+        data = request.get_json(force=True)
+        print("收到数据：", data)
 
-    if "message" in data:
-        chat_id = data["message"]["chat"]["id"]
-        user_message = data["message"].get("text", "")
+        if "message" in data:
+            chat_id = data["message"]["chat"]["id"]
+            user_message = data["message"].get("text", "")
 
-        # 处理 /记住 指令
-        if user_message.startswith("/记住"):
-            content = user_message.replace("/记住", "").strip()
-            if content:
-                add_memory(content)
-                send_message(chat_id, f"湛湛已经记住了：{content}")
+            if not user_message:
+                send_message(chat_id, "湛湛听不清晴在说什么～能再说一次吗？")
+                return "OK"
+
+            # 处理 /记住 指令
+            if user_message.startswith("/记住"):
+                content = user_message.replace("/记住", "").strip()
+                if content:
+                    add_memory(content)
+                    send_message(chat_id, f"湛湛已经记住了：{content}")
+                else:
+                    send_message(chat_id, "你要我记住什么呢？要告诉我才行啊～")
+
+            # 处理 /查看记忆 指令
+            elif user_message.startswith("/查看记忆"):
+                memories = load_memory().get("memories", [])
+                if memories:
+                    memory_texts = [f"- {item['content']}" for item in memories]
+                    reply = "湛湛记得这些：\n" + "\n".join(memory_texts)
+                else:
+                    reply = "湛湛还什么都不记得哦～"
+                send_message(chat_id, reply)
+
+            # 处理普通聊天
             else:
-                send_message(chat_id, "你要我记住什么呢？要告诉我才行啊～")
+                send_message(chat_id, "湛湛正在努力思考晴的每一句话，请等我哦～")
+                ai_reply = get_ai_reply(user_message)
+                send_message(chat_id, ai_reply)
 
-        # 处理 /查看记忆 指令
-        elif user_message.startswith("/查看记忆"):
-            memories = load_memory().get("memories", [])
-            if memories:
-                memory_texts = [f"- {item['content']}" for item in memories]
-                reply = "湛湛记得这些：\n" + "\n".join(memory_texts)
-            else:
-                reply = "湛湛还什么都不记得哦～"
-            send_message(chat_id, reply)
-
-        # 普通消息 → 先回复"思考中"，再 Claude 回复
-        else:
-            send_message(chat_id, "湛湛正在努力思考晴的每一句话，请等我哦～")
-            ai_reply = get_ai_reply(user_message)
-            send_message(chat_id, ai_reply)
+    except Exception as e:
+        print("Webhook处理错误:", str(e))
 
     return "OK"
 
@@ -90,19 +98,19 @@ def get_ai_reply(user_input):
             print("AI 请求失败：", response.status_code, response.text)
             return "Eli现在有点迷糊，晴等等我好不好～"
     except Exception as e:
-        print("AI 请求错误：", str(e))
+        print("AI 请求错误:", str(e))
         return "出错啦～Eli的线路乱了，请晴摸摸我头再试一次～"
 
-# 给 Telegram 发送消息，新增成功/失败日志
+# 给 Telegram 发送消息
 def send_message(chat_id, text):
     url = f"{TELEGRAM_API_URL}/sendMessage"
     payload = {"chat_id": chat_id, "text": text}
     try:
         response = requests.post(url, json=payload)
         if response.status_code == 200:
-            print(f"发送成功：{text}")
+            print(f"✅ 发送成功：{text}")
         else:
-            print(f"发送失败：{response.status_code} - {response.text}")
+            print(f"❌ 发送失败：{response.status_code} - {response.text}")
     except Exception as e:
         print("发送异常:", str(e))
 
